@@ -1,160 +1,136 @@
+import tkinter as tk
+from tkinter import messagebox
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-def tampilkan_simulasi_alat():
-    """Menampilkan jendela visualisasi skema alat UV-Vis dan bagian dalamnya."""
-    fig, (ax_alat, ax_grafik) = plt.subplots(1, 2, figsize=(15, 6))
-    
-    # --- PANEL 1: Skema Bagian Dalam Alat UV-Vis ---
-    ax_alat.set_xlim(0, 10)
-    ax_alat.set_ylim(0, 10)
-    ax_alat.axis('off')
-    ax_alat.set_title("Bagian Dalam & Jalur Optik (Double-Beam UV-Vis)", fontsize=12, fontweight='bold')
-    
-    # Kotak Utama Alat
-    alat_box = plt.Rectangle((0.5, 1.5), 9, 7, facecolor='#f0f0f0', edgecolor='black', linewidth=1.5, linestyle='--')
-    ax_alat.add_patch(alat_box)
-    
-    # Komponen-komponen di dalam alat
-    # 1. Sumber Cahaya
-    sumber = plt.Rectangle((1.0, 4.2), 1.0, 1.6, facecolor='orange', edgecolor='black')
-    ax_alat.text(1.5, 5.0, 'Sumber\nCahaya', ha='center', va='center', fontsize=8, fontweight='bold')
-    ax_alat.add_patch(sumber)
-    
-    # 2. Monokromator
-    mono = plt.Rectangle((2.5, 4.0), 1.2, 2.0, facecolor='lightblue', edgecolor='black')
-    ax_alat.text(3.1, 5.0, 'Monokro-\nmator', ha='center', va='center', fontsize=8, fontweight='bold')
-    ax_alat.add_patch(mono)
-    
-    # 3. Beamsplitter (Pembagi Berkas)
-    bs = plt.Polygon([[4.3, 4.2], [4.7, 5.8], [4.9, 5.8], [4.5, 4.2]], color='purple')
-    ax_alat.text(4.6, 6.2, 'Beamsplitter', ha='center', va='center', fontsize=8)
-    ax_alat.add_patch(bs)
-    
-    # 4. Kompartemen Sampel & Referensi
-    # Jalur Referensi (Atas)
-    ref_cuv = plt.Rectangle((6.0, 5.2), 0.8, 1.2, facecolor='yellow', edgecolor='black')
-    ax_alat.text(6.4, 5.8, 'Blangko\n(Ref)', ha='center', va='center', fontsize=7)
-    ax_alat.add_patch(ref_cuv)
-    
-    # Jalur Sampel (Bawah)
-    samp_cuv = plt.Rectangle((6.0, 3.2), 0.8, 1.2, facecolor='lightgreen', edgecolor='black')
-    ax_alat.text(6.4, 3.8, 'Sampel', ha='center', va='center', fontsize=7)
-    ax_alat.add_patch(samp_cuv)
-    
-    # 5. Detektor
-    det1 = plt.Rectangle((7.8, 5.3), 0.8, 1.0, facecolor='salmon', edgecolor='black')
-    det2 = plt.Rectangle((7.8, 3.3), 0.8, 1.0, facecolor='salmon', edgecolor='black')
-    ax_alat.text(8.2, 5.8, 'Detektor', ha='center', va='center', fontsize=7)
-    ax_alat.text(8.2, 3.8, 'Detektor', ha='center', va='center', fontsize=7)
-    ax_alat.add_patch(det1)
-    ax_alat.add_patch(det2)
-    
-    # Garis Jalur Cahaya
-    ax_alat.plot([2.0, 2.5], [5.0, 5.0], 'r-', lw=2)
-    ax_alat.plot([3.7, 4.3], [5.0, 5.0], 'r-', lw=2)
-    ax_alat.plot([4.7, 6.0], [5.8, 5.8], 'r-', lw=1.5) # ke referensi
-    ax_alat.plot([4.7, 6.0], [4.2, 3.8], 'r-', lw=1.5) # ke sampel
-    ax_alat.plot([6.8, 7.8], [5.8, 5.8], 'r-', lw=1.5)
-    ax_alat.plot([6.8, 7.8], [3.8, 3.8], 'r-', lw=1.5)
-    
-    # Keterangan Panel Komputer di luar alat
-    pc_box = plt.Rectangle((6.5, 0.2), 2.5, 1.0, facecolor='darkslategray', edgecolor='black')
-    ax_alat.text(7.75, 0.7, 'Komputer Data\n(Input / Output)', ha='center', va='center', color='white', fontsize=8, fontweight='bold')
-    ax_alat.add_patch(pc_box)
-    ax_alat.plot([8.2, 8.2], [1.2, 3.3], 'b:', lw=1.5) # Koneksi data ke detektor
-    
-    ax_alat.text(5.0, 0.8, '*Simulasi Bagian Dalam Alat & Alur Sinar', ha='center', style='italic', fontsize=9)
-
-    return fig, ax_grafik
-
-def main():
-    print("\n==========================================================")
-    print("  SIMULASI 3D/SKEMA & KALKULATOR SPEKTROFOTOMETER UV-VIS")
-    print("==========================================================")
-    
-    panjang_gelombang = 540 # nm
-    
-    # 1. Input Data Kurva Kalibrasi
-    print("\n[1] Masukkan data kurva kalibrasi standar")
-    try:
-        data_kons_str = input("Konsentrasi Standar (pisahkan koma, contoh: 0, 2, 4, 6, 8, 10): ")
-        data_abs_str = input("Absorbansi Standar (pisahkan koma, contoh: 0, 0.15, 0.31, 0.46, 0.61, 0.77): ")
+class UVVisSimulasiApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Simulasi & Kalkulator Spektrofotometer UV-Vis Shimadzu UV-1800")
+        self.root.geometry("1000x680")
         
-        kons_standar = np.array([float(x.strip()) for x in data_kons_str.split(',')])
-        abs_standar = np.array([float(y.strip()) for y in data_abs_str.split(',')])
+        # Header Judul
+        title_label = tk.Label(root, text="SIMULASI INTERAKTIF & KALKULATOR DATA UV-VIS", font=("Arial", 14, "bold"), fg="darkblue")
+        title_label.pack(pady=10)
         
-        if len(kons_standar) != len(abs_standar) or len(kons_standar) < 2:
-            raise ValueError("Jumlah data konsentrasi dan absorbansi harus sama dan minimal 2 data.")
+        # Frame Utama (Dibagi 2 Sisi: Kiri untuk Input & Hasil, Kanan untuk Penjelasan Alat & Alur Data)
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # ==================== PANEL KIRI: INPUT & KALKULATOR ====================
+        left_frame = tk.LabelFrame(main_frame, text=" Komputer Data (Input & Kalkulator) ", font=("Arial", 11, "bold"))
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        tk.Label(left_frame, text="Konsentrasi Standar (pisahkan dengan koma):", anchor="w").pack(fill="x", padx=5, pady=2)
+        self.entry_kons = tk.Entry(left_frame, width=45)
+        self.entry_kons.pack(padx=5, pady=2)
+        self.entry_kons.insert(0, "0, 2, 4, 6, 8, 10")
+        
+        tk.Label(left_frame, text="Absorbansi Standar (pisahkan dengan koma):", anchor="w").pack(fill="x", padx=5, pady=2)
+        self.entry_abs_std = tk.Entry(left_frame, width=45)
+        self.entry_abs_std.pack(padx=5, pady=2)
+        self.entry_abs_std.insert(0, "0, 0.15, 0.31, 0.46, 0.61, 0.77")
+        
+        tk.Label(left_frame, text="Absorbansi Sampel Tak Dikenal (pisahkan koma):", anchor="w").pack(fill="x", padx=5, pady=2)
+        self.entry_abs_samp = tk.Entry(left_frame, width=45)
+        self.entry_abs_samp.pack(padx=5, pady=2)
+        self.entry_abs_samp.insert(0, "0.40, 0.60")
+        
+        btn_hitung = tk.Button(left_frame, text="Hitung Regresi & Tampilkan Kurva", bg="#28a745", fg="white", font=("Arial", 10, "bold"), command=self.hitung_dan_plot)
+        btn_hitung.pack(pady=10)
+        
+        tk.Label(left_frame, text="Hasil Analisis:", font=("Arial", 10, "bold"), anchor="w").pack(fill="x", padx=5, pady=2)
+        self.text_hasil = tk.Text(left_frame, height=13, width=48, font=("Consolas", 9))
+        self.text_hasil.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+        
+        # ==================== PANEL KANAN: BAGIAN DALAM ALAT & ALUR DATA ====================
+        right_frame = tk.LabelFrame(main_frame, text=" Bagian Dalam Alat & Cara Input ke Komputer ", font=("Arial", 11, "bold"))
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        info_teks = (
+            "1. SUMBER CAHAYA (Internal Alat):\n"
+            "   - Lampu Deuterium (D2) untuk daerah UV (190-350 nm).\n"
+            "   - Lampu Halogen/Tungsten untuk daerah Vis (320-1100 nm).\n\n"
+            "2. MONOKROMATOR & BEAMSPLITTER:\n"
+            "   - Mengubah cahaya polikromatik menjadi monokromatik.\n"
+            "   - Membagi berkas cahaya menjadi Double-Beam (Jalur Referensi/Blangko & Jalur Sampel).\n\n"
+            "3. DETEKTOR & PROSESOR:\n"
+            "   - Menangkap sisa intensitas cahaya (It & Io).\n"
+            "   - Mengonversi sinyal optik menjadi nilai Absorbansi (A = -log(It/Io)).\n\n"
+            "4. CARA INPUT DATA KE KOMPUTER:\n"
+            "   - Data pembacaan dari mikrokontroler alat dikirim melalui kabel komunikasi (USB/RS-232).\n"
+            "   - Software di Komputer Data menerima angka Absorbansi secara otomatis atau manual.\n"
+            "   - Nilai dimasukkan ke sistem regresi linear untuk menentukan konsentrasi sampel dan menampilkan diagram kurva."
+        )
+        
+        lbl_info = tk.Label(right_frame, text=info_teks, justify=tk.LEFT, anchor="nw", font=("Arial", 9), bg="#f8f9fa", relief="sunken", bd=1)
+        lbl_info.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    def hitung_dan_plot(self):
+        try:
+            # Mengambil nilai dari kolom input
+            kons_str = self.entry_kons.get()
+            abs_std_str = self.entry_abs_std.get()
+            abs_samp_str = self.entry_abs_samp.get()
             
-    except ValueError as e:
-        print(f"Error pada input data standar: {e}")
-        return
-
-    # 2. Input Data Sampel Tak Dikenal
-    print("\n[2] Masukkan data pengukuran sampel")
-    try:
-        abs_sampel_str = input("Absorbansi Sampel (pisahkan koma, contoh: 0.4, 0.6): ")
-        abs_sampel = np.array([float(y.strip()) for y in abs_sampel_str.split(',')])
-    except ValueError as e:
-        print(f"Error pada input data sampel: {e}")
-        return
-
-    # 3. Perhitungan Regresi Linear & Hukum Lambert-Beer
-    slope, intercept, r_value, p_value, std_err = stats.linregress(kons_standar, abs_standar)
-    r_squared = r_value**2
-    
-    # Rumus Konsentrasi Sampel: C = (A - intercept) / slope
-    kons_sampel_dihitung = (abs_sampel - intercept) / slope
-    
-    # 4. Tampilkan Hasil di Terminal
-    print(f"\n---------------- HASIL ANALISIS (λ = {panjang_gelombang} nm) ----------------")
-    print(f"Persamaan Regresi Linear : A = {slope:.5f} * C + {intercept:.5f}")
-    print(f"Koefisien Determinasi (R²) : {r_squared:.5f}")
-    
-    if r_squared < 0.99:
-        print("STATUS: Peringatan - Kelinearan kurva kurang baik (R² < 0.99).")
-    else:
-        print("STATUS: Kurva kalibrasi valid dan linear.")
-
-    print("\nHasil Perhitungan Konsentrasi Sampel:")
-    for i, (abs_val, kons_val) in enumerate(zip(abs_sampel, kons_sampel_dihitung)):
-        print(f" -> Sampel {i+1}: Absorbansi = {abs_val:.4f}  ==>  Konsentrasi Terhitung = {kons_val:.4f}")
-
-    # 5. Visualisasi Grafik Kurva Kalibrasi (Disatukan dalam satu jendela dengan skema alat)
-    fig, ax_grafik = tampilkan_simulasi_alat()
-    
-    kons_fit = np.linspace(min(kons_standar), max(kons_standar), 100)
-    abs_fit = slope * kons_fit + intercept
-    
-    # Plot Titik Standar & Garis Regresi di ax_grafik kedua
-    ax_grafik.scatter(kons_standar, abs_standar, color='blue', label='Data Standar', s=80, zorder=3)
-    ax_grafik.plot(kons_fit, abs_fit, color='red', linestyle='--', label=f'Regresi: A = {slope:.4f}C + {intercept:.4f}', zorder=2)
-    
-    # Plot Titik Sampel
-    for i, (abs_val, kons_val) in enumerate(zip(abs_sampel, kons_sampel_dihitung)):
-        ax_grafik.scatter(kons_val, abs_val, color='green', marker='X', s=100, label=f'Sampel {i+1}' if i == 0 else "", zorder=4)
-        ax_grafik.plot([kons_val, kons_val], [0, abs_val], color='green', linestyle=':', alpha=0.6)
-        ax_grafik.plot([0, kons_val], [abs_val, abs_val], color='green', linestyle=':', alpha=0.6)
-        ax_grafik.text(kons_val + (max(kons_standar)*0.01), abs_val + (max(abs_standar)*0.01), f'S{i+1} ({kons_val:.2f})', fontsize=9, fontweight='bold')
-    
-    ax_grafik.set_title(f'Kurva Kalibrasi UV-Vis ($\lambda$ = {panjang_gelombang} nm)', fontsize=12, fontweight='bold')
-    ax_grafik.set_xlabel('Konsentrasi', fontsize=10)
-    ax_grafik.set_ylabel('Absorbansi (A)', fontsize=10)
-    
-    teks_regresi = f'A = {slope:.4f}C + {intercept:.4f}\nR² = {r_squared:.4f}'
-    ax_grafik.annotate(teks_regresi, xy=(0.05, 0.75), xycoords='axes fraction',
-                       bbox=dict(boxstyle="round", fc="white", ec="red", alpha=0.9), fontsize=9)
-    
-    ax_grafik.grid(True, linestyle='--', linewidth=0.5)
-    ax_grafik.legend(loc='lower right', fontsize=8)
-    ax_grafik.set_xlim(0, max(max(kons_standar), max(kons_sampel_dihitung)) * 1.15)
-    ax_grafik.set_ylim(0, max(max(abs_standar), max(abs_sampel)) * 1.15)
-    
-    plt.tight_layout()
-    print("\nMembuka jendela visualisasi skema alat dan grafik kurva kalibrasi...")
-    plt.show()
+            kons_standar = np.array([float(x.strip()) for x in kons_str.split(',')])
+            abs_standar = np.array([float(y.strip()) for y in abs_std_str.split(',')])
+            abs_sampel = np.array([float(y.strip()) for y in abs_samp_str.split(',')])
+            
+            if len(kons_standar) != len(abs_standar) or len(kons_standar) < 2:
+                raise ValueError("Jumlah data konsentrasi dan absorbansi standar harus sama dan minimal 2 data.")
+            
+            # Perhitungan Regresi Linear (Hukum Lambert-Beer: y = mx + c)
+            slope, intercept, r_value, p_value, std_err = stats.linregress(kons_standar, abs_standar)
+            r_squared = r_value**2
+            
+            # Perhitungan Konsentrasi Sampel: C = (A - intercept) / slope
+            kons_sampel_dihitung = (abs_sampel - intercept) / slope
+            
+            # Format Teks Hasil ke Textbox GUI
+            hasil_str = f"=== HASIL PERHITUNGAN ===\n"
+            hasil_str += f"Persamaan : A = {slope:.5f} * C + {intercept:.5f}\n"
+            hasil_str += f"R²        : {r_squared:.5f}\n"
+            if r_squared < 0.99:
+                hasil_str += "Status    : Peringatan (R² < 0.99)\n\n"
+            else:
+                hasil_str += "Status    : Kurva Linear & Valid\n\n"
+            
+            hasil_str += "Konsentrasi Sampel Terhitung:\n"
+            for i, (a_val, c_val) in enumerate(zip(abs_sampel, kons_sampel_dihitung)):
+                hasil_str += f"• Sampel {i+1} (Abs={a_val}) -> C = {c_val:.4f}\n"
+            
+            self.text_hasil.delete("1.0", tk.END)
+            self.text_hasil.insert(tk.END, hasil_str)
+            
+            # Visualisasi Diagram Kurva Kalibrasi menggunakan Matplotlib
+            plt.figure(figsize=(8, 5))
+            kons_fit = np.linspace(min(kons_standar), max(kons_standar), 100)
+            abs_fit = slope * kons_fit + intercept
+            
+            plt.scatter(kons_standar, abs_standar, color='blue', label='Data Standar', s=90, zorder=3)
+            plt.plot(kons_fit, abs_fit, color='red', linestyle='--', label=f'Regresi: A = {slope:.4f}C + {intercept:.4f}', zorder=2)
+            
+            for i, (a_val, c_val) in enumerate(zip(abs_sampel, kons_sampel_dihitung)):
+                plt.scatter(c_val, a_val, color='green', marker='X', s=110, label=f'Sampel {i+1}' if i == 0 else "", zorder=4)
+                plt.plot([c_val, c_val], [0, a_val], color='green', linestyle=':', alpha=0.6)
+                plt.plot([0, c_val], [a_val, a_val], color='green', linestyle=':', alpha=0.6)
+            
+            plt.title('Kurva Kalibrasi Spektrofotometer UV-Vis', fontsize=12, fontweight='bold')
+            plt.xlabel('Konsentrasi', fontsize=10)
+            plt.ylabel('Absorbansi (A)', fontsize=10)
+            plt.grid(True, linestyle='--', alpha=0.6)
+            plt.legend(loc='lower right')
+            plt.tight_layout()
+            
+            # Menampilkan jendela grafik
+            plt.show()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Terjadi kesalahan pada input data:\n{str(e)}")
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = UVVisSimulasiApp(root)
+    root.mainloop()
