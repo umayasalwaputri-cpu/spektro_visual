@@ -101,4 +101,4 @@ if proses_btn:
             st.pyplot(fig)
             
     except Exception as e:
-                st.error(f"Terjadi kesalahan dalam format input data: {e}")
+        st.error(f"Terjadi kesalahan dalam format input data: {e}")
